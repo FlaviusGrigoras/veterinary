@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from uuid import uuid4
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,7 +14,10 @@ class Users(db.Model):
     __tablename__ = "users"
     id = db.Column(db.String(32), primary_key=True, unique=True, default=get_uuid)
     email = db.Column(db.String(345), unique=True)
+    username = db.Column(db.String(30), unique=True)
     password = db.Column(db.Text, nullable=False)
+    first_name = db.Column(db.String(32), nullable=True)
+    last_name = db.Column(db.String(32), nullable=True)
 
     role = db.Column(db.String(20), default="client")
 
@@ -26,6 +29,10 @@ class Users(db.Model):
 
     def check_password(self, password_text):
         return check_password_hash(self.password, password_text)
+
+    def set_name(self, last_name, first_name):
+        self.first_name = first_name
+        self.last_name = last_name
 
 
 class MedicalService(db.Model):
