@@ -36,6 +36,12 @@ class Users(db.Model):
 
 
 class MedicalService(db.Model):
+    def __init__(self, name, species, duration, price):
+        self.name = name
+        self.species = species
+        self.duration = duration
+        self.price = price
+
     __tablename__ = "medical_services"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100), nullable=False)

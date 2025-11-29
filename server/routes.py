@@ -1,4 +1,4 @@
-from models import db, Users
+from models import MedicalService, db, Users
 from flask import jsonify, Blueprint, request
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api")
@@ -86,3 +86,55 @@ def register():
         return jsonify({"message": "Error creating user", "error": str(e)}), 500
 
     return jsonify({"message": "User created succesfully", "id": user.id}), 201
+
+
+@auth_bp.route("/services", methods=["POST"])
+def new_service():
+    data = request.get_json()
+    if not data:
+        return jsonify({"message": "Please enter valid data"}), 400
+
+    name = data.get("name")
+    species = data.get("species")
+    duration = data.get("duration")
+    price = data.get("price")
+
+    if not name:
+        return jsonify({"message": "Please enter valid name for consultation"}), 400
+    if not species:
+        return jsonify({"message": "Please enter valid name species"}), 400
+    if not duration:
+        return jsonify({"message": "Please enter valid duration"}), 400
+    if not price:
+        return jsonify({"message": "Please enter valid price"}), 400
+
+    new_service = MedicalService(name, species, duration, price)
+    try:
+        db.session.add(new_service)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error creating new service", "error": str(e)}), 500
+
+    return (
+        jsonify({"message": "Service created succesfully", "id": new_service.id}),
+        201,
+    )
+
+
+@auth_bp.route("/services", methods=["GET"])
+def list_services():
+    services = MedicalService.query.all()
+
+    rezultat = []
+    for x in services:
+        y = {
+            "name": f"{x.name}",
+            "species": f"{x.species}",
+            "duration": f"{x.duration}",
+            "price": f"{x.price}",
+        }
+        rezultat.append(y)
+
+    if rezultat:
+        return jsonify(rezultat), 200
