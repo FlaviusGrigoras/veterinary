@@ -68,11 +68,16 @@ doctor_services = db.Table(
 
 
 class DoctorProfile(db.Model):
+    def __init__(self, user_id, specialization, bio):
+        self.user_id=user_id
+        self.specialization=specialization
+        self.bio=bio
+
     __tablename__ = "doctor_profiles"
     id = db.Column(db.String(32), primary_key=True, default=get_uuid)
 
     user_id = db.Column(
-        db.String(32), db.ForeignKey("users.id"), unique=True, nullable=False
+        db.String(32), db.ForeignKey("users.id"), nullable=False
     )
     specialization = db.Column(db.String(100))
     bio = db.Column(db.Text)

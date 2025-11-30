@@ -1,4 +1,4 @@
-from models import MedicalService, db, Users
+from models import DoctorProfile, MedicalService, db, Users
 from flask import jsonify, Blueprint, request
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api")
@@ -16,6 +16,24 @@ def get_user(user_id):
             "Role": f"{user.role}",
         }
     )
+
+
+@auth_bp.route("/users", methods=["GET"])
+def get_users():
+    users = Users.query.all()
+    response = []
+
+    for user in users:
+        full_name = "Unknown"
+        if user.last_name and user.first_name:
+            full_name = f"{user.last_name} {user.first_name}"
+        user_data = {
+            "Email": user.email,
+            "Name": full_name,
+            "Role": user.role,
+        }
+        response.append(user_data)
+    return jsonify(response), 200
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -138,3 +156,78 @@ def list_services():
 
     if rezultat:
         return jsonify(rezultat), 200
+
+
+@auth_bp.route("/doctors", methods=["POST"])
+def create_doctor():
+    data = request.get_json()
+    if not data:
+        return jsonify({"message": "Please enter valid data"}), 400
+
+    user_id = data.get("user_id")
+    specialization = data.get("specialization")
+    bio = data.get("bio")
+
+    if not user_id or not specialization or not bio:
+        return jsonify({"message": "Please enter all input fields"}), 400
+
+    user = Users.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    existing_doctor = DoctorProfile.query.filter_by(user_id=user_id).first()
+
+    try:
+        if existing_doctor:
+            existing_doctor.specialization = specialization
+            existing_doctor.bio = bio
+
+            db.session.commit()
+            return (
+                jsonify(
+                    {
+                        "message": "Doctor profile updated successfully",
+                        "id": existing_doctor.id,
+                    }
+                ),
+                200,
+            )
+        else:
+            new_doctor = DoctorProfile(
+                user_id=user_id, specialization=specialization, bio=bio
+            )
+            db.session.add(new_doctor)
+            db.session.commit()
+
+            return (
+                jsonify(
+                    {
+                        "message": "Doctor profile created successfully",
+                        "id": new_doctor.id,
+                    }
+                ),
+                201,
+            )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error processing request", "error": str(e)}), 500
+
+
+@auth_bp.route("/doctors", methods=["GET"])
+def list_doctors():
+    doctors = DoctorProfile.query.all()
+    response = []
+    for doctor in doctors:
+        full_name = "Unknown"
+        if doctor.user:
+            full_name = f"{doctor.user.last_name} {doctor.user.first_name}"
+
+        doctor_data = {
+            "doctor_id": doctor.id,
+            "user_id": doctor.user_id,
+            "name": full_name,
+            "specialization": doctor.specialization,
+            "bio": doctor.bio,
+        }
+        response.append(doctor_data)
+    return jsonify(response), 200
