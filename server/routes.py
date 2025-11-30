@@ -156,6 +156,58 @@ def list_services():
 
     if rezultat:
         return jsonify(rezultat), 200
+    else:
+        return jsonify({"message": "There is no service to list"}), 404
+
+
+@auth_bp.route("/services/<service_id>", methods=["PUT"])
+def modify_service(service_id):
+    service = MedicalService.query.filter_by(id=service_id).first()
+
+    if not service:
+        return jsonify({"message": "This service does not exists"}), 404
+
+    data = request.get_json()
+    if not data or not data.get("price") or not data.get("duration"):
+        return jsonify({"message": "Please enter price and duration"}), 400
+
+    service.price = data.get("price")
+    service.duration = data.get("duration")
+
+    try:
+        db.session.commit()
+        return (
+            jsonify(
+                {
+                    "message": "Service updated successfully",
+                    "service": {
+                        "id": service.id,
+                        "name": service.name,
+                        "price": service.price,
+                        "duration": service.duration,
+                    },
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error updating serivce", "error": str(e)}), 500
+
+
+@auth_bp.route("/services/<service_id>", methods=["DELETE"])
+def delete_service(service_id):
+    service = MedicalService.query.filter_by(id=service_id).first()
+    if not service:
+        return jsonify({"message": "This service does not exist"}), 404
+
+    try:
+        db.session.delete(service)
+        db.session.commit()
+        return jsonify({"message": "Service deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error deleting service", "error": str(e)}), 500
 
 
 @auth_bp.route("/doctors", methods=["POST"])
