@@ -1,4 +1,5 @@
-from models import DoctorProfile, MedicalService, db, Users
+from datetime import datetime, timedelta
+from models import Appointment, DoctorProfile, MedicalService, db, Users
 from flask import jsonify, Blueprint, request
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api")
@@ -283,3 +284,79 @@ def list_doctors():
         }
         response.append(doctor_data)
     return jsonify(response), 200
+
+
+# Appointments
+@auth_bp.route("/appointments", methods=["POST"])
+def create_appointment():
+    data = request.get_json()
+    if not data:
+        return jsonify({"message": "Please enter valid data"}), 400
+
+    start_time_raw = data.get("start_time")
+    doctor_id = data.get("doctor_id")
+    client_id = data.get("client_id")
+    service_id = data.get("service_id")
+    status = data.get("status", "scheduled")
+
+    if not start_time_raw or not doctor_id or not client_id or not service_id:
+        return jsonify({"message": "Please enter valid data for appointment"}), 400
+
+    service = MedicalService.query.filter_by(id=service_id).first()
+    client = Users.query.filter_by(id=client_id).first()
+    doctor = DoctorProfile.query.filter_by(id=doctor_id).first()
+
+    try:
+        start_time = datetime.fromisoformat(start_time_raw)
+    except ValueError:
+        return (
+            jsonify(
+                {"message": "Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)"}
+            ),
+            400,
+        )
+
+    if not service:
+        return jsonify({"message": "This service does not exist"}), 404
+    if not client:
+        return jsonify({"message": "This client does not exist"}), 404
+    if not doctor:
+        return jsonify({"message": "This doctor does not exist"}), 404
+
+    durata = timedelta(minutes=service.duration)
+    end_time = start_time + durata
+
+    existing_appointment = Appointment.query.filter(
+        Appointment.doctor_id == doctor_id,
+        Appointment.status != "cancelled",
+        Appointment.start_time < end_time,
+        Appointment.end_time > start_time,
+    ).first()
+
+    if existing_appointment:
+        return (
+            jsonify(
+                {
+                    "message": "Doctor is not available at this time",
+                    "conflict_with": f"{existing_appointment.start_time} - {existing_appointment.end_time}",
+                }
+            ),
+            409,
+        )
+
+    new_appointment = Appointment(
+        start_time=start_time,
+        end_time=end_time,
+        status=status,
+        doctor_id=doctor_id,
+        client_id=client_id,
+        service_id=service_id,
+    )
+
+    try:
+        db.session.add(new_appointment)
+        db.session.commit()
+        return jsonify({"message": "Appointment created successfully"}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error processing request", "error": str(e)}), 500

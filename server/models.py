@@ -69,16 +69,14 @@ doctor_services = db.Table(
 
 class DoctorProfile(db.Model):
     def __init__(self, user_id, specialization, bio):
-        self.user_id=user_id
-        self.specialization=specialization
-        self.bio=bio
+        self.user_id = user_id
+        self.specialization = specialization
+        self.bio = bio
 
     __tablename__ = "doctor_profiles"
     id = db.Column(db.String(32), primary_key=True, default=get_uuid)
 
-    user_id = db.Column(
-        db.String(32), db.ForeignKey("users.id"), nullable=False
-    )
+    user_id = db.Column(db.String(32), db.ForeignKey("users.id"), nullable=False)
     specialization = db.Column(db.String(100))
     bio = db.Column(db.Text)
 
@@ -92,6 +90,14 @@ class DoctorProfile(db.Model):
 
 
 class Appointment(db.Model):
+    def __init__(self, start_time, end_time, status, doctor_id, client_id, service_id):
+        self.start_time = start_time
+        self.end_time = end_time
+        self.status = status
+        self.doctor_id = doctor_id
+        self.client_id = client_id
+        self.service_id = service_id
+
     __tablename__ = "appointments"
 
     id = db.Column(db.String(32), primary_key=True, default=get_uuid)
