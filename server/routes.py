@@ -360,3 +360,81 @@ def create_appointment():
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": "Error processing request", "error": str(e)}), 500
+
+
+@auth_bp.route("/appointments", methods=["GET"])
+def show_appointments():
+    client_id = request.args.get("client_id")
+    doctor_id = request.args.get("doctor_id")
+
+    query = Appointment.query
+
+    if client_id:
+        query = query.filter_by(client_id=client_id)
+    if doctor_id:
+        query = query.filter_by(doctor_id=doctor_id)
+
+    appointments = query.all()
+
+    if not appointments:
+        return jsonify([]), 200
+
+    response = []
+
+    for x in appointments:
+        doctor_full_name = "Unknown"
+        if x.doctor and x.doctor.user:
+            doctor_full_name = f"{x.doctor.user.last_name} {x.doctor.user.first_name}"
+
+        client_full_name = "Unknown"
+        if x.client:
+            client_full_name = f"{x.client.last_name} {x.client.first_name}"
+
+        appointment = {
+            "id": x.id,
+            "start_time": x.start_time.isoformat(),
+            "end_time": x.end_time.isoformat(),
+            "status": x.status,
+            "doctor_name": doctor_full_name,
+            "service_name": x.service.name if x.service else "Service deleted",
+            "client_name": client_full_name,
+            "price": x.service.price if x.service else 0,
+        }
+
+        response.append(appointment)
+
+    if response:
+        return jsonify(response), 200
+
+
+@auth_bp.route("/appointment/<appointment_id>", methods=["PUT"])
+def update_appointment_status(appointment_id):
+    appointment = Appointment.query.filter_by(id=appointment_id).first()
+    if not appointment:
+        return jsonify({"message": "This appointment does not exist"}), 404
+
+    data = request.get_json()
+    status = data.get("status")
+    if not data or not status:
+        return jsonify({"message": "Please enter status"}), 400
+
+    valid_statuses = ["scheduled", "completed", "cancelled"]
+    if status not in valid_statuses:
+        return jsonify({"message": f"Invalid status. Allowed: {valid_statuses}"}), 400
+
+    appointment.status = status
+
+    try:
+        db.session.commit()
+        return (
+            jsonify(
+                {
+                    "message": "Status modified successfully",
+                    "new_Status": appointment.status,
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error processing request", "error": str(e)}), 500
