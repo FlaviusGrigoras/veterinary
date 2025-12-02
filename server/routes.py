@@ -1,6 +1,12 @@
 from datetime import datetime, timedelta
 from models import Appointment, DoctorProfile, MedicalService, db, Users
 from flask import jsonify, Blueprint, request
+from flask_jwt_extended import (
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+    get_jwt,
+)
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api")
 
@@ -32,6 +38,7 @@ def get_users():
             "Email": user.email,
             "Name": full_name,
             "Role": user.role,
+            "ID": user.id,
         }
         response.append(user_data)
     return jsonify(response), 200
@@ -47,6 +54,9 @@ def login():
         return jsonify({"message": "Email or password incorrect"}), 400
 
     if user.check_password(data.get("password")):
+        access_token = create_access_token(
+            identity=user.id, additional_claims={"role": user.role}
+        )
         return (
             jsonify(
                 {
@@ -54,6 +64,7 @@ def login():
                     "id": f"{user.id}",
                     "role": f"{user.role}",
                     "username": f"{user.username}",
+                    "access_token": f"{access_token}",
                 }
             ),
             200,
@@ -108,7 +119,12 @@ def register():
 
 
 @auth_bp.route("/services", methods=["POST"])
+@jwt_required()
 def new_service():
+    claims = get_jwt()
+    if not claims["role"] == "admin":
+        return jsonify({"message": "Only an admin can create doctors"}), 403
+
     data = request.get_json()
     if not data:
         return jsonify({"message": "Please enter valid data"}), 400
@@ -197,7 +213,12 @@ def modify_service(service_id):
 
 
 @auth_bp.route("/services/<service_id>", methods=["DELETE"])
+@jwt_required()
 def delete_service(service_id):
+    claims = get_jwt()
+    if not claims["role"] == "admin":
+        return jsonify({"message": "Only an admin can create doctors"}), 403
+
     service = MedicalService.query.filter_by(id=service_id).first()
     if not service:
         return jsonify({"message": "This service does not exist"}), 404
@@ -212,7 +233,12 @@ def delete_service(service_id):
 
 
 @auth_bp.route("/doctors", methods=["POST"])
+@jwt_required()
 def create_doctor():
+    claims = get_jwt()
+    if not claims["role"] == "admin":
+        return jsonify({"message": "Only an admin can create doctors"}), 403
+
     data = request.get_json()
     if not data:
         return jsonify({"message": "Please enter valid data"}), 400
