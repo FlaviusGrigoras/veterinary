@@ -1,14 +1,24 @@
 from datetime import datetime, timedelta
 from models import Appointment, DoctorProfile, MedicalService, db, Users
-from flask import jsonify, Blueprint, request
+from flask import jsonify, Blueprint, request, current_app
 from flask_jwt_extended import (
     create_access_token,
     jwt_required,
     get_jwt_identity,
     get_jwt,
 )
+import json
+import redis
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api")
+
+
+def get_redis_client():
+    return redis.Redis(
+        host=current_app.config["REDIS_HOST"],
+        port=current_app.config["REDIS_PORT"],
+        decode_responses=True,
+    )
 
 
 @auth_bp.route("/user/<user_id>", methods=["GET"])
@@ -151,6 +161,12 @@ def new_service():
         db.session.rollback()
         return jsonify({"message": "Error creating new service", "error": str(e)}), 500
 
+    try:
+        r = get_redis_client()
+        r.delete("services:all")
+    except Exception as e:
+        print(f"Warning: Could not invalidate cache. Redis error: {str(e)}")
+
     return (
         jsonify({"message": "Service created succesfully", "id": new_service.id}),
         201,
@@ -159,11 +175,24 @@ def new_service():
 
 @auth_bp.route("/services", methods=["GET"])
 def list_services():
-    services = MedicalService.query.all()
+    r = get_redis_client()
+    cache_key = "services:all"
+    rezultat = None
 
+    try:
+        cached_data = r.get(cache_key)
+        if cached_data:
+            print("Data fetched from Redis Cache")
+            return jsonify(json.loads(cached_data)), 200
+    except redis.RedisError as e:
+        print(f"Redis error: {e}")
+
+    services = MedicalService.query.all()
     rezultat = []
+
     for x in services:
         y = {
+            "id": x.id,
             "name": f"{x.name}",
             "species": f"{x.species}",
             "duration": f"{x.duration}",
@@ -172,6 +201,11 @@ def list_services():
         rezultat.append(y)
 
     if rezultat:
+        try:
+            r.setex(cache_key, 60, json.dumps(rezultat))
+        except redis.RedisError:
+            pass
+
         return jsonify(rezultat), 200
     else:
         return jsonify({"message": "There is no service to list"}), 404
@@ -193,23 +227,30 @@ def modify_service(service_id):
 
     try:
         db.session.commit()
-        return (
-            jsonify(
-                {
-                    "message": "Service updated successfully",
-                    "service": {
-                        "id": service.id,
-                        "name": service.name,
-                        "price": service.price,
-                        "duration": service.duration,
-                    },
-                }
-            ),
-            200,
-        )
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": "Error updating serivce", "error": str(e)}), 500
+        return jsonify({"message": "Error updating service", "error": str(e)}), 500
+
+    try:
+        r = get_redis_client()
+        r.delete("services:all")
+    except Exception as e:
+        print(f"Warning: Redis error on modify: {str(e)}")
+
+    return (
+        jsonify(
+            {
+                "message": "Service updated successfully",
+                "service": {
+                    "id": service.id,
+                    "name": service.name,
+                    "price": service.price,
+                    "duration": service.duration,
+                },
+            }
+        ),
+        200,
+    )
 
 
 @auth_bp.route("/services/<service_id>", methods=["DELETE"])
@@ -226,10 +267,16 @@ def delete_service(service_id):
     try:
         db.session.delete(service)
         db.session.commit()
-        return jsonify({"message": "Service deleted successfully"}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": "Error deleting service", "error": str(e)}), 500
+
+    try:
+        r = get_redis_client()
+        r.delete("services:all")
+    except Exception as e:
+        print(f"Warning: Redis error on delete: {str(e)}")
+    return jsonify({"message": "Service deleted successfully"}), 200
 
 
 @auth_bp.route("/doctors", methods=["POST"])
