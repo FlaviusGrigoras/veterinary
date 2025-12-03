@@ -15,10 +15,10 @@ export default function Login() {
       localStorage.setItem("token", res.data.access_token);
       localStorage.setItem("userId", res.data.id);
       localStorage.setItem("role", res.data.role);
-      alert("Login reusit!");
+      alert("Login successfull!");
       navigate("/dashboard");
     } catch (err) {
-      alert("Eroare la login: " + (err.response?.data?.message || err.message));
+      alert("Error: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -40,9 +40,7 @@ export default function Login() {
         <br />
         <button type="submit">Login</button>
       </form>
-      <button onClick={() => navigate("/register")}>
-        Nu ai cont? Inregistreaza-te
-      </button>
+      <button onClick={() => navigate("/register")}>Register</button>
     </div>
   );
 }
