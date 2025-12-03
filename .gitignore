@@ -3,7 +3,7 @@ server/.DS_Store
 frontend/.DS_Store       
 .env          
 server/.env
-react/.env
+frontend/.env
 
 
 server/venv/
