@@ -54,6 +54,46 @@ def get_users():
     return jsonify(response), 200
 
 
+@auth_bp.route("/user/<get_id>", methods=["PUT"])
+@jwt_required()
+def modify_user(get_id):
+    claims = get_jwt()
+    if claims.get("role") != "admin":
+        return jsonify({"message": "Only admins can modify user roles"}), 403
+
+    user = Users.query.filter_by(id=get_id).first()
+    if not user:
+        return jsonify({"message": "That is not an valid user"}), 404
+
+    data = request.get_json()
+    role = data.get("role")
+
+    valid_roles = ["client", "admin", "doctor"]
+    if not data or role not in valid_roles:
+        return jsonify({"message": f"Invalid role. Allowed: {valid_roles}"}), 400
+
+    user.role = role
+
+    try:
+        db.session.commit()
+        return (
+            jsonify(
+                {
+                    "message": "User role modified successfully",
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "role": user.role,
+                    },
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error updating user", "error": str(e)}), 500
+
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()

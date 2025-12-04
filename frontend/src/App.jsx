@@ -6,6 +6,7 @@ import ServicesManager from "./ServicesManager.jsx";
 import DoctorsManager from "./DoctorsManager";
 import BookAppointment from "./BookAppointment";
 import AppointmentsList from "./AppointmentsList";
+import UsersManager from "./UsersManager.jsx";
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -31,6 +32,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <UsersManager />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/services"
           element={

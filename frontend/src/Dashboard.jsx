@@ -1,14 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react"; // Nu mai avem nevoie de useEffect
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [role, setRole] = useState("");
 
-  useEffect(() => {
-    const storedRole = localStorage.getItem("role");
-    setRole(storedRole);
-  }, []);
+  const [role] = useState(() => localStorage.getItem("role") || "");
 
   const handleLogout = () => {
     localStorage.clear();
@@ -49,6 +45,11 @@ export default function Dashboard() {
             <li>
               <button onClick={() => navigate("/doctors")}>
                 Manage Doctors
+              </button>
+            </li>
+            <li>
+              <button onClick={() => navigate("/users")}>
+                Manage Users (Roles)
               </button>
             </li>
           </>
