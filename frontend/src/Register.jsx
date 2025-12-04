@@ -34,23 +34,6 @@ export default function Register() {
       <h2>Register New Account</h2>
       <form onSubmit={handleRegister}>
         <div>
-          <label>Email: </label>
-          <input name="email" type="email" onChange={handleChange} required />
-        </div>
-        <div>
-          <label>Username: </label>
-          <input name="username" type="text" onChange={handleChange} required />
-        </div>
-        <div>
-          <label>Password: </label>
-          <input
-            name="password"
-            type="password"
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div>
           <label>Last Name: </label>
           <input
             name="last_name"
@@ -64,6 +47,23 @@ export default function Register() {
           <input
             name="first_name"
             type="text"
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div>
+          <label>Email: </label>
+          <input name="email" type="email" onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Username: </label>
+          <input name="username" type="text" onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Password: </label>
+          <input
+            name="password"
+            type="password"
             onChange={handleChange}
             required
           />
